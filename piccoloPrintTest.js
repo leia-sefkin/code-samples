@@ -28,44 +28,48 @@ http.get(dbURL, function(res) {
 
 	//once we have all the data
 	res.on('end',function(photoViews) {	
-		
-		for(var i=0; i<userList.length; i++) {
-			(function(i) { 
-				//ensure that we're only checking user entries
-				var id = userList[i].substring(0,2);
-				if(id == "id") {
-					createFolder(saveDir+userList[i]);
+		var user = 0;
+		var userList_length = userList.length;
+		while(user < userList_length) {
+			//ensure that we're only checking user entries
+			var id = userList[user].substring(0,2);
+			if(id == "id") {
+				createFolder(saveDir+userList[user]);
 					
-					//run printed photos view to download the photos
-					photoProcess(userList[i], function(urlList) {
+				//run printed photos view to download the photos
+				photoProcess(userList[user], function(urlList) {
 
-						//hash each photo file
-						var files = fs.readdirSync(saveDir+userList[i]);
-						var userHashList = [];
+					//hash each photo file
+					var files = fs.readdirSync(saveDir+userList[user]);
+					var userHashList = [];
+					var files_length = files.length;
+					var file = 0;
 
-						for(var j=0; j<files.length; j++) {
-							(function(j) {
-								getHash(saveDir+userList[i]+"/"+files[j], function(hash) {
-									//save the photo number at the same time as the hash
-									var hashEntry = {};
-									hashEntry.picture = files[j];
-									hashEntry.md5 = hash;
-									userHashList.push(hashEntry);
-								});
-							})(j);
-						}
-
-						//get the md5s from orders
-						ordersHash(userList[i], function(orderHashList) {
-							//attempt to match with those from the userDB
-							compareHashes(orderHashList,userHashList,urlList);
+					while(file < files_length) {
+						//get hash and photo
+						getHash(saveDir+userList[user]+"/"+files[file], function(hash) {
+							//save the photo number at the same time as the hash
+							var hashEntry = {};
+							hashEntry.picture = files[file];
+							hashEntry.md5 = hash;
+							userHashList.push(hashEntry);
 						});
 
-				});
+						file++;
+					}
 
-				}
-			})(i);
-		}
+					//get the md5s from orders
+					ordersHash(userList[user], function(orderHashList) {
+						//attempt to match with those from the userDB
+						compareHashes(orderHashList,userHashList,urlList);
+					});
+
+				});//end printed photos view
+
+			}//end ID check if
+
+			user++;
+		}//end userList while
 	});
 
 });

@@ -46,27 +46,43 @@ http.get(dbURL, function(res) {
 
 	//once we have all the data 
 	res.on('end',function(photoViews) {	
-		
-		for(var i=0; i<userList.length; i++) {
-			(function(i) { 
-				//ensure that we're only checking user entries
-				var id = userList[i].substring(0,2);
-				if(id == "id") {
-					
-					//grab the md5s for that user
-					getUserMD5s(userList[i], function(userMD5s) {
 
-						//get the md5s from orders
-						getOrderMD5s(userList[i], function(orderMD5s) {
-							//attempt to match
-							compareOrderHashes(userList[i], userMD5s, orderMD5s, function(orderCompFinished) {
-								compareUserHashes(userList[i], userMD5s, orderMD5s);
-							});
-						});
+		var listLength = userList.length;
+		var user = 0;
 
-					});
-				}
-			})(i);
+		while(user < listLength) {
+			//ensure that we're only checking user entries
+			var id = userList[user].substring(0,2);
+			
+			if(id == "id") {
+				
+				async.auto({
+					//get the md5s from the user db
+					get_MD5s:function(callback, results){
+						getUserMD5s(userList[user], callback);
+					},
+					//get the md5s from the order db
+					get_order_MD5s: ['get_MD5s', function(callback, results) {
+						getOrderMD5s(userList[user], callback);
+					}],
+					//attempt to match order with users
+					compare_order_hashes: ['get_order_MD5s', function(callback, results) {
+						compareOrderHashes(userList[user], results.get_MD5s, results.get_order_MD5s, callback);
+					}],
+					//attempt to match users with orders
+					compare_user_hashes: ['compare_order_hashes', function(callback, results) {
+						compareUserHashes(userList[user], results.get_MD5s, results.get_order_MD5s, callback);
+					}]
+				}, function(err, result) {
+					if(err) {
+						callback("ERROR: ", err);
+					} else {
+						callback(null, results);
+					}
+				});
+			}
+
+			user++;
 		}
 
 	});
